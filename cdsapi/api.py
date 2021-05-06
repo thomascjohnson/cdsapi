@@ -101,8 +101,12 @@ class Result(object):
             target = url.split("/")[-1]
 
         dest = target
-        if not isinstance(target, str):
-            dest = "some file"
+
+        if not isinstance(dest, str):
+            try:
+                dest = dest.name
+            except:
+                dest = "file object"
 
         self.info("Downloading %s to %s (%s)", url, dest, bytes_to_string(size))
         start = time.time()
