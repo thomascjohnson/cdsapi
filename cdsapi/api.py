@@ -14,6 +14,7 @@ import os
 import logging
 import uuid
 import requests
+from io import TextIOWrapper
 
 try:
     from urllib.parse import urljoin
@@ -99,7 +100,11 @@ class Result(object):
         if target is None:
             target = url.split("/")[-1]
 
-        self.info("Downloading %s to %s (%s)", url, target, bytes_to_string(size))
+        dest = target
+        if not isinstance(target, str):
+            dest = "some file"
+
+        self.info("Downloading %s to %s (%s)", url, dest, bytes_to_string(size))
         start = time.time()
 
         mode = "wb"
@@ -129,12 +134,20 @@ class Result(object):
                     leave=False,
                 ) as pbar:
                     pbar.update(total)
-                    with open(target, mode) as f:
-                        for chunk in r.iter_content(chunk_size=1024):
-                            if chunk:
-                                f.write(chunk)
-                                total += len(chunk)
-                                pbar.update(len(chunk))
+
+                    if isinstance(target, str):
+                        f = open(target, mode)
+                    else:
+                        f = target
+
+                    for chunk in r.iter_content(chunk_size=1024):
+                        if chunk:
+                            f.write(chunk)
+                            total += len(chunk)
+                            pbar.update(len(chunk))
+
+                    if isinstance(target, str):
+                        f.close()
 
             except requests.exceptions.ConnectionError as e:
                 self.error("Download interupted: %s" % (e,))
@@ -353,7 +366,7 @@ class Client(object):
     def service(self, name, *args, **kwargs):
         self.delete = False  # Don't delete results
         name = "/".join(name.split("."))
-        mimic_ui = kwargs.pop('mimic_ui', False)
+        mimic_ui = kwargs.pop("mimic_ui", False)
         # To mimic the CDS ui the request should be populated directly with the kwargs
         if mimic_ui:
             request = kwargs
